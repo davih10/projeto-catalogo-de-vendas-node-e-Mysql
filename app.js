@@ -110,24 +110,71 @@ app.post('/cadastrar', function(req,res){
 
 // Rota para remover produtos
 app.get('/remover/:codigo&:imagem', function(req, res){
+    //SQL
+    let sql = `DELETE FROM produtos WHERE codigo = ${req.params.codigo}`
+    //Executar SQL
+    conexão.query(sql, function(erro,retorno){
+        //Caso ocorra erro
+        if(erro) throw erro;
 
-    // SQL
-    let sql = `DELETE FROM produtos WHERE codigo = ${req.params.codigo}`;
-    
-        // Executar o comando SQL
-        conexao.query(sql, function(erro, retorno){
-            // Caso falhe o comando SQL
+        //Caso contrário
+        fs.unlink(__dirname + '/image/' + req.params.imagem,(erro)=>{ // remover a imagem
+            console.log(erro);
+        })
+    })
+    //redirecionar para a página principal
+    res.redirect('/');
+});
+
+// Rota para editar produtos
+app.get('/formularioEditar/:codigo', function(req,res){ // rota para editar produtos
+    //SQL
+    let sql = `SELECT * FROM produtos WHERE codigo = ${req.params.codigo}`; // selecionar produtos pelo código
+
+    //Executar SQL
+    conexão.query(sql, function(erro,retorno){
+        //Caso ocorra erro
+        if(erro) throw erro;
+
+        //Caso contrário
+        res.render('formularioEditar', {produto:retorno[0]});
+    })
+})
+// Rota para atualizar produtos
+app.post('/editar', function(req,res){
+    // obter os dados do formulário
+    let codigo = req.body.codigo;
+    let nome = req.body.nome;
+    let valor = req.body.valor;
+    let nomeImagem = req.body.nomeImagem;
+    // Definir o tipo de Edição
+    try{
+        //Objeto de imagem
+        let imagem = req.files.imagem;
+        //SQL
+        let sql = `UPDATE produtos SET nome = '${nome}', valor = ${valor}, imagem = '${imagem.name}' WHERE codigo = ${codigo}`; // atualizar os produtos
+        //Executar SQL
+        conexão.query(sql, function(erro,retorno){
+            //Caso ocorra erro
             if(erro) throw erro;
-            // Caso o comando SQL funcione
-            fs.unlink(__dirname+'/image/'+req.params.imagem, (erro_imagem)=>{
-                console.log('Falha ao remover a imagem ');
-            });
-        });
-        
-        // Redirecionamento
-        res.redirect('/');
-    
-    });
-
+            //Remover a imagem antiga
+            fs.unlink(__dirname + '/image/' + nomeImagem,(erro)=>{
+                console.log('erro ao remover imagem');
+            })
+            //Cadastro da nova imagem
+            imagem.mv(__dirname + '/image/'+ imagem.name); // salvar a imagem
+        })
+    }catch(erro){
+        //SQL
+        let sql = `UPDATE produtos SET nome = '${nome}', valor = ${valor} WHERE codigo = ${codigo}`; // atualizar os produtos    
+        //Executar SQL
+        conexão.query(sql, function(erro,retorno){
+            //Caso ocorra erro
+            if(erro) throw erro;
+        })
+    }
+    // Finalizar a execução
+    res.redirect('/'); // redirecionar para a página principal
+})
 // Servidor
 app.listen(8080)
